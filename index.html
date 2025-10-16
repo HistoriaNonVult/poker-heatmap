@@ -66,27 +66,37 @@
         const gridElement = document.getElementById('heatmap-grid');
         const titleLabel = document.getElementById('title-label');
         
-        // This will store the loaded JSON data
         let equityDatabase = null;
-        // This will map hand text ("AKs") to its corresponding DOM element
         const gridCells = {};
 
         /**
          * Initializes the application by generating the grid and loading data.
+         * This version includes added debugging logs.
          */
         async function initialize() {
             generateGrid();
+            
+            // --- 新增的诊断代码 ---
+            console.log("页面诊断信息开始：");
+            console.log("当前页面地址 (window.location.href):", window.location.href);
+
+            // 根据当前页面地址，构建json文件的完整URL
+            const jsonUrl = new URL('full_equity_database.json', window.location.href);
+            console.log("程序将尝试从这个URL加载数据:", jsonUrl.href);
+            // --- 诊断代码结束 ---
+
             try {
-                const response = await fetch('./full_equity_database.json');
+                const response = await fetch(jsonUrl.href); // 使用构建好的完整URL
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    console.error("服务器响应失败 (Server response was not OK):", response);
+                    throw new Error(`HTTP 错误! 状态: ${response.status}`);
                 }
                 equityDatabase = await response.json();
                 titleLabel.textContent = "请在网格中点击一手牌开始分析";
                 console.log("胜率数据库加载成功。");
             } catch (error) {
-                titleLabel.textContent = "错误：未找到 'full_equity_database.json'。请确保文件存在。";
-                console.error("加载胜率数据库失败:", error);
+                titleLabel.textContent = "错误：加载数据失败，请按F12查看控制台。";
+                console.error("加载胜率数据库时发生致命错误 (Fatal error loading equity database):", error);
             }
         }
 
@@ -117,13 +127,13 @@
                     const r2 = ranks[c_idx];
                     let text, className;
 
-                    if (r_idx < c_idx) { // Suited connectors (top-right triangle)
+                    if (r_idx < c_idx) { 
                         text = `${r1}${r2}s`;
                         className = 'grid-cell suited';
-                    } else if (c_idx < r_idx) { // Off-suit hands (bottom-left triangle)
+                    } else if (c_idx < r_idx) {
                         text = `${r2}${r1}o`;
                         className = 'grid-cell off-suit';
-                    } else { // Pairs (diagonal)
+                    } else {
                         text = `${r1}${r2}`;
                         className = 'grid-cell pair';
                     }
@@ -131,7 +141,7 @@
                     const cell = document.createElement('div');
                     cell.className = className;
                     cell.textContent = text;
-                    cell.dataset.hand = text; // Store hand text in a data attribute
+                    cell.dataset.hand = text;
                     cell.addEventListener('click', () => displayHeatmap(text));
                     
                     gridElement.appendChild(cell);
@@ -174,7 +184,6 @@
                 cell.textContent = hand;
                 cell.classList.remove('hero');
                 
-                // Reset background and text colors
                 cell.style.backgroundColor = '';
                 cell.style.color = 'white';
 
@@ -217,12 +226,6 @@
         }
 
         // --- Color Calculation Functions (Ported from Python) ---
-
-        /**
-         * Calculates a heatmap color for a given equity value.
-         * @param {number} equity - Equity value from 0 to 100.
-         * @returns {string} A hex color string.
-         */
         function getColorForEquity(equity) {
             const e = Math.max(0, Math.min(100, equity)) / 100.0;
             const blue = [23, 92, 201];
@@ -244,11 +247,6 @@
             return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
         }
 
-        /**
-         * Determines if text should be black or white based on background brightness.
-         * @param {string} bgHex - A hex color string (e.g., "#RRGGBB").
-         * @returns {string} Either "#000000" (black) or "#FFFFFF" (white).
-         */
         function getTextColorForBg(bgHex) {
             const hex = bgHex.lstrip('#');
             const r = parseInt(hex.substring(0, 2), 16);
